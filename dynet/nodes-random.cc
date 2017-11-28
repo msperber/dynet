@@ -97,7 +97,7 @@ void RandomBernoulli::forward_dev_impl(const MyDevice & dev, const vector<const 
   Eigen::internal::UniformRandomGenerator<float> uni_rg(draw_random_seed());
   fx.tvec().device(*dev.edevice) = fx.tvec().random(uni_rg);
 //  fx.tvec().device(*dev.edevice) = (fx.tvec() < fx.tvec().constant(p)).cast<float>() * scale;
-  fx.tvec().device(*dev.edevice) = (fx.tvec() ).round() * scale;
+  fx.tvec().device(*dev.edevice) = (fx.tvec() + fx.tvec().constant(p - 0.5)).round() * scale;
 }
 
 template<class MyDevice>

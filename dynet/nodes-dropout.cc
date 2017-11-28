@@ -33,7 +33,8 @@ void Dropout::forward_dev_impl(const MyDevice & dev, const vector<const Tensor*>
   Tensor m(dim, (float*)aux_mem, fx.device, DeviceMempool::FXS);
   Eigen::internal::UniformRandomGenerator<float> uni_rg(draw_random_seed());
   m.tvec().device(*dev.edevice) = m.tvec().random(uni_rg);
-  m.tvec().device(*dev.edevice) = (m.tvec() < m.tvec().constant((1.f-p))).cast<float>() * 1.f / (1.f-p);
+//  m.tvec().device(*dev.edevice) = (m.tvec() < m.tvec().constant((1.f-p))).cast<float>() * 1.f / (1.f-p);
+  m.tvec().device(*dev.edevice) = (m.tvec() + m.tvec().constant(1.f-p - 0.5)).round() / (1.f-p);
   fx.tvec().device(*dev.edevice) = xs[0]->tvec() * m.tvec();
 }
 
@@ -79,8 +80,7 @@ void DropoutDim::forward_dev_impl(const MyDevice & dev, const vector<const Tenso
   Tensor m(mask_dim, (float*)aux_mem, fx.device, DeviceMempool::FXS);
   Eigen::internal::UniformRandomGenerator<float> uni_rg(draw_random_seed());
   m.tvec().device(*dev.edevice) = m.tvec().random(uni_rg);
-  m.tvec().device(*dev.edevice) = (m.tvec() < m.tvec().constant((1.f-p))).cast<float>() / (1.f-p);
-
+  m.tvec().device(*dev.edevice) = (m.tvec() + m.tvec().constant(1.f-p - 0.5)).round() / (1.f-p);
   Eigen::array<ptrdiff_t, 4> bcast = {1, 1, 1, 1}; bcast[dimension] = xs[0]->d[dimension];
   fx.tb<3>().device(*dev.edevice) = xs[0]->tb<3>() * m.tb<3>().broadcast(bcast);
 }
@@ -127,7 +127,7 @@ void DropoutBatch::forward_dev_impl(const MyDevice & dev, const vector<const Ten
   Tensor m(mask_dim, (float*)aux_mem, fx.device, DeviceMempool::FXS);
   Eigen::internal::UniformRandomGenerator<float> uni_rg(draw_random_seed());
   m.tvec().device(*dev.edevice) = m.tvec().random(uni_rg);
-  m.tvec().device(*dev.edevice) = (m.tvec() < m.tvec().constant((1.f-p))).cast<float>() * 1.f / (1.f-p);
+  m.tvec().device(*dev.edevice) = (m.tvec() + m.tvec().constant(1.f-p - 0.5)).round() / (1.f-p);
   Eigen::array<ptrdiff_t, 2> bcast = {xs[0]->d.batch_size(), 1};
   fx.tbvec().device(*dev.edevice) = xs[0]->tbvec() * m.tbvec().broadcast(bcast);
 }
