@@ -91,13 +91,34 @@ Dim RandomBernoulli::dim_forward(const vector<Dim>& xs) const {
 
 #endif
 
+
+#ifdef HAVE_CUDA
+__global__
+void dy_sign(int n, float *x)
+{
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+  for (int i = index; i < n; i += stride){
+    if (x[i]>0.0) x[i] = 1.0;
+    else x[i] = 0.0;
+  }
+}
+#endif
+
 template<class MyDevice>
 void RandomBernoulli::forward_dev_impl(const MyDevice & dev, const vector<const Tensor*>& xs, Tensor& fx) const {
   DYNET_ASSERT(xs.size() == 0, "Failed dimension check in RandomBernoulli::forward");
   Eigen::internal::UniformRandomGenerator<float> uni_rg(draw_random_seed());
   fx.tvec().device(*dev.edevice) = fx.tvec().random(uni_rg);
 //  fx.tvec().device(*dev.edevice) = (fx.tvec() < fx.tvec().constant(p)).cast<float>() * scale;
-  fx.tvec().device(*dev.edevice) = (fx.tvec() + fx.tvec().constant(p - 0.5)).round() * scale;
+//  fx.tvec().device(*dev.edevice) = (fx.tvec() + fx.tvec().constant(p - 0.5)).round() * scale;
+#ifdef HAVE_CUDA
+  fx.tvec().device(*dev.edevice) = fx.tvec() + fx.tvec().constant(p - 1.0);
+  dy_sign<<<1, 256>>>(fx.d.size(), fx.v);
+#else
+  fx.tvec().device(*dev.edevice) = (fx.tvec() + fx.tvec().constant(p - 0.5)).round();
+#endif
+  fx.tvec().device(*dev.edevice) = fx.tvec() * scale;
 }
 
 template<class MyDevice>
